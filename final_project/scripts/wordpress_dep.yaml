@@ -1,0 +1,81 @@
+# Define a Kubernetes Service to route traffic to WordPress pods.
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress           # Name of the Service
+  namespace: prod-env       # Namespace used to isolate resources
+  labels:
+    app: wordpress         # Label indicating the application
+spec:
+  ports:
+    - port: 80              # Exposes port 80
+  selector:
+    app: wordpress          # Selects pods with the "app: wordpress" label
+    tier: frontend         # Selects pods with the "tier: frontend" label
+
+
+---
+
+# Define a Kubernetes Deployment for deploying WordPress pods.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress           # Name of the Deployment
+  namespace: prod-env
+  labels:
+    app: wordpress
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+      tier: frontend
+  strategy:
+    type: Recreate          # Specifies the strategy to recreate pods
+  template:
+    metadata:
+      labels:
+        app: wordpress
+        tier: frontend
+    spec:
+      containers:
+        - image: wordpress    # Specifies the Docker image to use
+          name: wordpress     # Name of the container
+          envFrom:
+            - configMapRef:
+                name: wordpress-config # Reference to a ConfigMap for environment variables
+          env:
+            - name: WORDPRESS_CONFIG_EXTRA
+              value: |
+                define('MYSQL_CLIENT_FLAGS', MYSQLI_CLIENT_SSL);  # Environment variable for WordPress
+          ports:
+            - containerPort: 80  # Exposes port 80
+              name: wordpress
+          volumeMounts:
+            - name: wordpress-persistent-storage
+              mountPath: /var/www/html  # Mounts a volume to /var/www/html in the container
+          resources:
+            requests:
+              memory: "512Mi"  # Memory request
+              cpu: "0.5"       # CPU request
+      volumes:
+        - name: wordpress-persistent-storage
+          persistentVolumeClaim:
+            claimName: wp-pv-claim         
+
+
+---
+
+# Define a PersistentVolumeClaim (PVC) to request persistent storage.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: prod-env
+  name: wp-pv-claim        # Name of the PVC
+  labels:
+    app: wordpress
+spec:
+  accessModes:
+    - ReadWriteOnce        # Defines access mode
+  resources:
+    requests:
+      storage: 20Gi         # Requests 20 gigabytes of storage

@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingresswordpress
+  namespace: dev-prod
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: 20.13.42.165.nip.io
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+              service:
+                name: wordpress
+                port:
+                  number: 80
+   
+  tls:
+  - hosts:
+    - dritonssl.sandbox.aws.teamwork.net
+    secretName: testsecret
+
+
+
